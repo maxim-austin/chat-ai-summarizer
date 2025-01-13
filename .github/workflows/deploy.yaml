@@ -1,0 +1,59 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [ "main" ]
+  # Removed pull_request triggers, so deployment only happens when code is merged into main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies & package Lambda
+        run: |
+          # Create a fresh virtual environment
+          python -m venv venv
+          source venv/bin/activate
+
+          # Install dependencies into lambda_src/
+          # so they get bundled alongside code
+          pip install -r lambda_src/requirements.txt -t lambda_src/
+
+          # Zip the entire lambda_src directory (code + dependencies)
+          cd lambda_src
+          zip -r ../package.zip . 
+          cd ..
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.10.4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: "us-west-2"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan \
+          -var "aws_region=us-west-2" \
+          -var "aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve \
+          -var "aws_region=us-west-2" \
+          -var "aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"

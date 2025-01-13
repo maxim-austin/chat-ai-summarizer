@@ -1,0 +1,14 @@
+{
+  "LLM_MODEL_NAME": "gpt-4o-mini",
+  "LLM_TEMPERATURE": "0.0",
+  "LLM_IMAGE_MODEL_NAME": "dall-e-3",
+  "READER_TIMEZONE": "US/Central",
+  "channels": [
+    {
+      "SOURCE_CHANNEL_NAME": "Около-ИТ в Остине",
+      "SOURCE_CHANNEL_ID": -1001297614184,
+      "SUMMARY_CHANNEL_ID": -1002419660010,
+      "GENERATE_IMAGE": 1
+    }
+  ]
+}
