@@ -57,6 +57,9 @@ resource "aws_lambda_function" "chat_summarizer_lambda" {
   # We reference the zip file we build/commit via GitHub Actions
   filename = "${path.module}/package.zip"
 
+  # Add source_code_hash
+  source_code_hash = filebase64sha256("${path.module}/package.zip")
+
   depends_on = [aws_iam_role_policy_attachment.lambda_basic_execution]
 }
 
