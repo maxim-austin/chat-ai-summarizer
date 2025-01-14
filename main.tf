@@ -12,6 +12,15 @@ terraform {
   required_version = ">= 1.3.0"
 }
 
+terraform {
+  backend "s3" {
+    bucket = "chatsummarizer"
+    key    = "chat-summarizer-lambda/terraform.tfstate"
+    region = "us-west-2"
+    encrypt = true
+  }
+}
+
 provider "aws" {
   region = var.aws_region
 }
