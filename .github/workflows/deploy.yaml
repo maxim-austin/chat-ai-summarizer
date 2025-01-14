@@ -49,11 +49,13 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: terraform plan \
-          -var "aws_region=us-west-2" \
-          -var "aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
+        run: |
+          terraform plan \
+            -var="aws_region=us-west-2" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"    
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve \
-          -var "aws_region=us-west-2" \
-          -var "aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
+        run: |
+          terraform apply -auto-approve \
+            -var="aws_region=us-west-2" \
+            -var="aws_account_id=${{ secrets.AWS_ACCOUNT_ID }}"
