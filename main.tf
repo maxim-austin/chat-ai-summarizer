@@ -25,6 +25,9 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Fetch AWS Account ID dynamically
+data "aws_caller_identity" "current" {}
+
 # IAM Role for Lambda
 resource "aws_iam_role" "lambda_role" {
   name               = "chat_summarizer_lambda_role"
@@ -39,6 +42,23 @@ data "aws_iam_policy_document" "lambda_trust" {
       identifiers = ["lambda.amazonaws.com"]
     }
   }
+}
+
+# Grant Lambda access to all SSM parameters
+resource "aws_iam_role_policy" "lambda_ssm_access" {
+  name   = "chat_summarizer_lambda_ssm_policy"
+  role   = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ssm:GetParameter"
+        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/*"
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
@@ -56,10 +76,13 @@ resource "aws_lambda_function" "chat_summarizer_lambda" {
 
   # Reference the deployment package from S3
   s3_bucket        = "chatsummarizer"                                 # S3 bucket name
-  s3_key           = "lambda/package.zip"                             # Path to the package in S3
+  s3_key           = "chat-summarizer-lambda/package.zip"            # Path to the package in S3
   source_code_hash = filebase64sha256("${path.module}/package.zip")   # Ensure updates are detected
 
-  depends_on = [aws_iam_role_policy_attachment.lambda_basic_execution]
+  depends_on = [
+    aws_iam_role_policy_attachment.lambda_basic_execution,
+    aws_iam_role_policy.lambda_ssm_access
+  ]
 }
 
 # EventBridge Rule for Daily Trigger
@@ -83,4 +106,3 @@ resource "aws_cloudwatch_event_target" "daily_trigger_target" {
   rule      = aws_cloudwatch_event_rule.daily_trigger.name
   arn       = aws_lambda_function.chat_summarizer_lambda.arn
 }
-
