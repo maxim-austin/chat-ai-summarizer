@@ -54,11 +54,10 @@ resource "aws_lambda_function" "chat_summarizer_lambda" {
   role          = aws_iam_role.lambda_role.arn
   timeout       = 500
 
-  # We reference the zip file we build/commit via GitHub Actions
-  filename = "${path.module}/package.zip"
-
-  # Add source_code_hash
-  source_code_hash = filebase64sha256("${path.module}/package.zip")
+  # Reference the deployment package from S3
+  s3_bucket        = "chatsummarizer"                                 # S3 bucket name
+  s3_key           = "lambda/package.zip"                             # Path to the package in S3
+  source_code_hash = filebase64sha256("${path.module}/package.zip")   # Ensure updates are detected
 
   depends_on = [aws_iam_role_policy_attachment.lambda_basic_execution]
 }
