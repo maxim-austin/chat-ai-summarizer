@@ -33,7 +33,7 @@ jobs:
 
       - name: Upload Lambda Package to S3
         run: |
-          aws s3 cp package.zip s3://chatsummarizer/lambda/package.zip
+          aws s3 cp package.zip s3://chatsummarizer/chat-summarizer-lambda/package.zip
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
