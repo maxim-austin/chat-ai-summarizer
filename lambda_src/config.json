@@ -21,6 +21,22 @@
       "GENERATE_IMAGE": 1,
       "SUMMARY_PERIOD_HOURS": 24,
       "ENABLED": 1
+    },
+    {
+      "SOURCE_CHANNEL_NAME": "Финансы в США",
+      "SOURCE_CHANNEL_ID": -1001548232107,
+      "SUMMARY_CHANNEL_ID": -4730866032,
+      "GENERATE_IMAGE": 0,
+      "SUMMARY_PERIOD_HOURS": 24,
+      "ENABLED": 1
+    },
+    {
+      "SOURCE_CHANNEL_NAME": "SnowflakeDB chat",
+      "SOURCE_CHANNEL_ID": -1001475642648,
+      "SUMMARY_CHANNEL_ID": -4703496393,
+      "GENERATE_IMAGE": 0,
+      "SUMMARY_PERIOD_HOURS": 24,
+      "ENABLED": 1
     }
   ]
 }

@@ -1,4 +1,4 @@
-# GenAI Telegram Summarizer
+# GenAI Telegram Chat Summarizer
 
 ## 1. Overview
 This GenAI application summarizes the contents of specified Telegram channels using an OpenAI LLM and optionally generates an accompanying illustration. The high-level flow is:
