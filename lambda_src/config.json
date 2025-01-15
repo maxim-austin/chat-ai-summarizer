@@ -8,6 +8,12 @@
       "SOURCE_CHANNEL_NAME": "Около-ИТ в Остине",
       "SOURCE_CHANNEL_ID": -1001297614184,
       "SUMMARY_CHANNEL_ID": -1002419660010,
+      "GENERATE_IMAGE": 0
+    },
+    {
+      "SOURCE_CHANNEL_NAME": "Собрание города Остин",
+      "SOURCE_CHANNEL_ID": -1001300734764,
+      "SUMMARY_CHANNEL_ID": -1002295737651,
       "GENERATE_IMAGE": 1
     }
   ]
