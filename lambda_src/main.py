@@ -53,11 +53,13 @@ def lambda_handler(event, context):
         # Load config
         config = load_config("config.json")
 
-        # Extract LLM configuration
+        # Extract configuration
         llm_model_name = config["LLM_MODEL_NAME"]
         llm_temperature = float(config["LLM_TEMPERATURE"])
         image_model_name = config["LLM_IMAGE_MODEL_NAME"]
         reader_timezone = config["READER_TIMEZONE"]
+        num_of_messages_limit = config["NUM_OF_MESSAGES_LIMIT"]
+        system_channel_id = config["SYSTEM_CHANNEL_ID"]
 
         # Initialize Telegram client
         api_id = int(secrets["TELEGRAM_API_ID"])
@@ -66,19 +68,34 @@ def lambda_handler(event, context):
         client = TelegramClient(StringSession(session_str), api_id, api_hash)
 
         with client:
-            # Now iterate over config["channels"]
+            # Iterate over channels
             for channel_config in config["channels"]:
-                process_channel(
-                    client,
-                    channel_config,
-                    llm_model_name,
-                    llm_temperature,
-                    image_model_name,
-                    reader_timezone
-                )
+                try:
+                    process_channel(
+                        client,
+                        channel_config,
+                        llm_model_name,
+                        llm_temperature,
+                        image_model_name,
+                        reader_timezone,
+                        num_of_messages_limit,
+                        system_channel_id
+                    )
+                except Exception as channel_error:
+                    # Log channel-specific errors to the system channel
+                    error_message = f"Error processing channel {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}: {channel_error}"
+                    client.send_message(system_channel_id, error_message)
 
         return {"statusCode": 200, "body": "Successfully processed all channels."}
     except Exception as e:
+        # Log critical errors to the system channel
+        secrets = get_secrets()  # Load secrets again to ensure access to Telegram API
+        api_id = int(secrets["TELEGRAM_API_ID"])
+        api_hash = secrets["TELEGRAM_API_HASH"]
+        session_str = secrets["TELEGRAM_SESSION"]
+        client = TelegramClient(StringSession(session_str), api_id, api_hash)
+        with client:
+            client.send_message(config["SYSTEM_CHANNEL_ID"], f"Critical error in Lambda execution: {e}")
         return {"statusCode": 500, "body": f"Error: {str(e)}"}
 
 

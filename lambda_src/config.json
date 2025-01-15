@@ -3,18 +3,24 @@
   "LLM_TEMPERATURE": "0.0",
   "LLM_IMAGE_MODEL_NAME": "dall-e-3",
   "READER_TIMEZONE": "US/Central",
+  "NUM_OF_MESSAGES_LIMIT": 300,
+  "SYSTEM_CHANNEL_ID": -4751365416,
   "channels": [
     {
       "SOURCE_CHANNEL_NAME": "Около-ИТ в Остине",
       "SOURCE_CHANNEL_ID": -1001297614184,
       "SUMMARY_CHANNEL_ID": -1002419660010,
-      "GENERATE_IMAGE": 0
+      "GENERATE_IMAGE": 0,
+      "SUMMARY_PERIOD_HOURS": 24,
+      "ENABLED": 1
     },
     {
       "SOURCE_CHANNEL_NAME": "Собрание города Остин",
       "SOURCE_CHANNEL_ID": -1001300734764,
       "SUMMARY_CHANNEL_ID": -1002295737651,
-      "GENERATE_IMAGE": 1
+      "GENERATE_IMAGE": 1,
+      "SUMMARY_PERIOD_HOURS": 24,
+      "ENABLED": 0
     }
   ]
 }
