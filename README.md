@@ -95,3 +95,4 @@ The project uses a **GitHub Actions workflow** to trigger the Terraform deployme
 2. Create a `.env` file with your Telegram and OpenAI credentials.  
 3. Update or create `config.json` with your channel IDs and other parameters.  
 4. Run `python main.py` to test.
+
