@@ -1,108 +1,69 @@
-import json
-import os
+import logging
+import asyncio
+from utils import get_secrets, load_config, initialize_telegram_client
 from telegram_processor import process_channel
-from utils import load_config
-from dotenv import load_dotenv
-from telethon.sync import TelegramClient
-from telethon.sessions import StringSession
-import boto3
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def get_secrets():
-    """
-    Fetch secrets from AWS Systems Manager Parameter Store if running in Lambda.
-    Otherwise, load from .env for local testing.
-    """
-    if os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
-        # Running in AWS Lambda
-        ssm = boto3.client("ssm", region_name="us-west-2")
-        param_names = [
-            "TELEGRAM_API_ID",
-            "TELEGRAM_API_HASH",
-            "TELEGRAM_SESSION",
-            "OPENAI_API_KEY",
-        ]
-        secrets = {}
-        for name in param_names:
-            response = ssm.get_parameter(Name=name, WithDecryption=True)
-            secrets[name] = response["Parameter"]["Value"]
-        return secrets
-    else:
-        # Running locally
-        load_dotenv()
-        return {
-            "TELEGRAM_API_ID": os.getenv("TELEGRAM_API_ID"),
-            "TELEGRAM_API_HASH": os.getenv("TELEGRAM_API_HASH"),
-            "TELEGRAM_SESSION": os.getenv("TELEGRAM_SESSION"),
-            "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        }
+async def async_main(event: dict, context) -> dict:
+    client = None
+    system_channel_id = None
 
-
-def lambda_handler(event, context):
-    """AWS Lambda entry point."""
     try:
-        # Load secrets
         secrets = get_secrets()
-
-        # Set environment variables for other modules
-        os.environ["TELEGRAM_API_ID"] = secrets["TELEGRAM_API_ID"]
-        os.environ["TELEGRAM_API_HASH"] = secrets["TELEGRAM_API_HASH"]
-        os.environ["TELEGRAM_SESSION"] = secrets["TELEGRAM_SESSION"]
-        os.environ["OPENAI_API_KEY"] = secrets["OPENAI_API_KEY"]
-
-        # Load config
         config = load_config("config.json")
 
-        # Extract configuration
-        llm_model_name = config["LLM_MODEL_NAME"]
-        llm_temperature = float(config["LLM_TEMPERATURE"])
-        image_model_name = config["LLM_IMAGE_MODEL_NAME"]
-        reader_timezone = config["READER_TIMEZONE"]
-        num_of_messages_limit = config["NUM_OF_MESSAGES_LIMIT"]
-        system_channel_id = config["SYSTEM_CHANNEL_ID"]
+        system_channel_id = config.get("SYSTEM_CHANNEL_ID")
+        if not isinstance(system_channel_id, int):
+            raise ValueError("SYSTEM_CHANNEL_ID is missing or invalid in config.json")
 
-        # Initialize Telegram client
-        api_id = int(secrets["TELEGRAM_API_ID"])
-        api_hash = secrets["TELEGRAM_API_HASH"]
-        session_str = secrets["TELEGRAM_SESSION"]
-        client = TelegramClient(StringSession(session_str), api_id, api_hash)
+        num_of_messages_limit = config.get("NUM_OF_MESSAGES_LIMIT", 300)
+        llm_model_name = config.get("LLM_MODEL_NAME", "gpt-4o-mini")
+        llm_temperature = float(config.get("LLM_TEMPERATURE", 0.0))
+        llm_image_model_name = config.get("LLM_IMAGE_MODEL_NAME", "dall-e-3")
+        reader_timezone = config.get("READER_TIMEZONE", "US/Central")
 
-        with client:
-            # Iterate over channels
-            for channel_config in config["channels"]:
-                try:
+        client = await initialize_telegram_client(secrets)
+
+        tasks = []
+        for channel_config in config["channels"]:
+            if channel_config.get("ENABLED", 1) == 0:
+                logger.info(f"Skipping disabled channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
+                await client.send_message(system_channel_id,
+                                          f"Skipping disabled channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
+            else:
+                tasks.append(
                     process_channel(
-                        client,
-                        channel_config,
-                        llm_model_name,
-                        llm_temperature,
-                        image_model_name,
-                        reader_timezone,
-                        num_of_messages_limit,
-                        system_channel_id
+                        client, channel_config, secrets, num_of_messages_limit,
+                        llm_model_name, llm_temperature, reader_timezone, llm_image_model_name, system_channel_id
                     )
-                except Exception as channel_error:
-                    # Log channel-specific errors to the system channel
-                    error_message = f"Error processing channel {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}: {channel_error}"
-                    client.send_message(system_channel_id, error_message)
+                )
 
+        await asyncio.gather(*tasks)
+        logger.info("All channels processed successfully.")
         return {"statusCode": 200, "body": "Successfully processed all channels."}
+
     except Exception as e:
-        # Log critical errors to the system channel
-        secrets = get_secrets()  # Load secrets again to ensure access to Telegram API
-        api_id = int(secrets["TELEGRAM_API_ID"])
-        api_hash = secrets["TELEGRAM_API_HASH"]
-        session_str = secrets["TELEGRAM_SESSION"]
-        client = TelegramClient(StringSession(session_str), api_id, api_hash)
-        with client:
-            client.send_message(config["SYSTEM_CHANNEL_ID"], f"Critical error in Lambda execution: {e}")
+        critical_error_msg = f"Critical error in Lambda execution: {e}"
+        logger.critical(critical_error_msg)
+
+        if client and isinstance(system_channel_id, int):
+            try:
+                await client.send_message(system_channel_id, critical_error_msg)
+            except Exception as telegram_error:
+                logger.critical(f"Failed to send error to SYSTEM_CHANNEL_ID: {telegram_error}")
+        else:
+            logger.critical("SYSTEM_CHANNEL_ID is missing; cannot send error to Telegram.")
+
         return {"statusCode": 500, "body": f"Error: {str(e)}"}
 
 
-# For local testing
+def lambda_handler(event, context):
+    """AWS Lambda Entry Point (Non-Async)."""
+    return asyncio.run(async_main(event, context))  # Runs async functions inside a sync function
+
+
 if __name__ == "__main__":
-    # Simulate an event for local testing
-    fake_event = {}
-    fake_context = {}
-    response = lambda_handler(fake_event, fake_context)
-    print(json.dumps(response, indent=4))
+    asyncio.run(async_main({}, {}))

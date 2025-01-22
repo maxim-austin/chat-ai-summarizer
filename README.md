@@ -66,27 +66,32 @@ The project uses a **GitHub Actions workflow** to trigger the Terraform deployme
 
 ### **main.py**
 - **`lambda_handler(event, context)`**: Entry point for AWS Lambda.  
+- Executes **asynchronous functions inside an event loop** to improve efficiency.  
 - Loads secrets (Telegram, OpenAI) from AWS SSM Parameter Store or from `.env` (local).  
-- Reads config from `config.json`, initializes the Telegram client, and calls `process_channel(...)` for each channel.
+- Reads config from `config.json`, initializes the Telegram client, and calls `process_channel(...)` concurrently for each enabled channel.  
+- Logs errors and sends notifications to the system Telegram channel.
 
 ### **telegram_processor.py**
 - **`process_channel(...)`**: Core function that:
   1. Validates if the channel is enabled.  
-  2. Fetches messages within a specified period and up to a set limit.  
+  2. Fetches messages **asynchronously** within a specified period and up to a set limit.  
   3. Calls **`summarize_messages(...)`** to generate text.  
   4. Optionally calls **`generate_image(...)`** and posts the results to a target channel.  
-  5. Logs errors and outputs to the system channel.
+  5. Logs errors and sends error messages to the **global** system channel (`SYSTEM_CHANNEL_ID`).  
+  6. Runs **fully asynchronously** for improved performance.
 
 ### **summarizer.py**
 - **`summarize_messages(...)`**: Uses LangChain/OpenAI to produce a text summary from given messages.  
-- **`generate_image(...)`**: Creates a prompt from the text summary and calls OpenAI’s image-generation endpoint to produce an illustration.
+- **`generate_image(...)`**: Creates a prompt from the text summary and calls OpenAI’s image-generation endpoint to produce an illustration.  
+- Ensures that **no empty summaries are generated** and logs errors properly.
 
 ### **Dependencies**
-- **Telethon**: For Telegram client interactions.  
+- **Telethon**: For Telegram client interactions (async mode).  
 - **LangChain**: Abstraction layer for ChatGPT/OpenAI LLM usage.  
 - **requests**: For image-generation API calls (and image downloading).  
 - **boto3** (in Lambda): For AWS SSM Parameter Store if running in AWS.  
-- **python-dotenv**: For local `.env` usage.
+- **python-dotenv**: For local `.env` usage.  
+- **asyncio**: Enables fully **asynchronous execution** for better performance.  
 
 ---
 

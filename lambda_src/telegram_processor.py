@@ -1,45 +1,32 @@
+import logging
 import requests
 from datetime import datetime, timedelta, timezone
 from summarizer import summarize_messages, generate_image
+from telethon import TelegramClient
+from typing import Dict, List
+
+logger = logging.getLogger(__name__)
 
 
-def process_channel(
-    client,
-    channel_config,
-    llm_model_name,
-    llm_temperature,
-    image_model_name,
-    reader_timezone,
-    num_of_messages_limit,
-    system_channel_id
-):
-    """Processes a single Telegram channel."""
+async def process_channel(client: TelegramClient, channel_config: Dict, secrets: Dict[str, str],
+                          num_of_messages_limit: int, llm_model_name: str, llm_temperature: float, reader_timezone: str,
+                          llm_image_model_name: str, system_channel_id: int) -> None:
     try:
-        # Skip the channel if not enabled
-        if channel_config.get("ENABLED", 1) == 0:
-            client.send_message(
-                system_channel_id,
-                f"Skipping channel {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')} as it is disabled."
-            )
-            return
-
         source_channel_id = channel_config["SOURCE_CHANNEL_ID"]
         summary_channel_id = channel_config["SUMMARY_CHANNEL_ID"]
         generate_image_flag = channel_config.get("GENERATE_IMAGE", 0)
         summary_period_hours = channel_config.get("SUMMARY_PERIOD_HOURS", 24)
 
-        # Define the time window
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(hours=summary_period_hours)
-        all_messages = []
+        all_messages: List = []
 
-        # Fetch messages from the source channel
-        channel = client.get_entity(source_channel_id)
+        channel = await client.get_entity(source_channel_id)
         last_date = None
         total_messages_fetched = 0
 
         while True:
-            batch = client.get_messages(channel, limit=100, offset_date=last_date)
+            batch = await client.get_messages(channel, limit=100, offset_date=last_date)
             if not batch:
                 break
 
@@ -59,51 +46,44 @@ def process_channel(
             if total_messages_fetched >= num_of_messages_limit:
                 break
 
-        # Ensure messages are in chronological order
         all_messages.reverse()
 
-        # If no messages, post only the time period and message count
         if not all_messages:
-            time_period = f"**Time period:** {start_date.strftime('%Y-%m-%d %H:%M:%S')} to {end_date.strftime('%Y-%m-%d %H:%M:%S')}"
-            message_count_text = "**Number of messages:** 0"
-            client.send_message(summary_channel_id, f"{time_period}\n{message_count_text}")
-            client.send_message(
-                system_channel_id,
-                f"Channel {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')} has no new messages."
-            )
+            info_message = f"No new messages found for channel {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}"
+            logger.info(info_message)
+            await client.send_message(system_channel_id, info_message)
             return
 
-        # Summarize messages
+        logger.info(f"Generating summary for channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
         summary_text = summarize_messages(
-            all_messages,
-            start_date,
-            end_date,
-            llm_model_name,
-            llm_temperature,
-            reader_timezone
+            all_messages, start_date, end_date,
+            llm_model_name, llm_temperature, reader_timezone,
+            secrets["OPENAI_API_KEY"]
         )
 
-        # Post the summary text
-        client.send_message(summary_channel_id, summary_text)
+        if not summary_text.strip():
+            summary_text = "**[No meaningful messages were found to summarize]**"
 
-        # If GENERATE_IMAGE == 1, generate and post the image
-        if generate_image_flag == 1:
-            image_url = generate_image(summary_text, image_model_name)
-            image_path = "/tmp/summary_image.png"
+        await client.send_message(summary_channel_id, summary_text)
+        logger.info(f"Summary sent to channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
 
-            # Download the image locally
+        if generate_image_flag:
+            logger.info(f"Generating image for channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
+            image_url = generate_image(summary_text, llm_image_model_name, secrets["OPENAI_API_KEY"])
             image_data = requests.get(image_url)
+
             if image_data.status_code == 200:
+                image_path = "/tmp/summary_image.png"
                 with open(image_path, "wb") as f:
                     f.write(image_data.content)
+                await client.send_file(summary_channel_id, image_path, caption="Illustration for the summary above")
+                logger.info(f"Image sent to channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
             else:
-                raise Exception(
-                    f"Failed to download image: {image_data.status_code} - {image_data.text}"
-                )
-
-            # Post the image with a short caption
-            client.send_file(summary_channel_id, image_path, caption="Illustration for the summary above")
+                error_msg = f"Failed to download image: {image_data.status_code} - {image_data.text}"
+                logger.error(error_msg)
+                await client.send_message(system_channel_id, error_msg)
 
     except Exception as e:
         error_message = f"Error processing channel {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}: {e}"
-        client.send_message(system_channel_id, error_message)
+        logger.error(error_message)
+        await client.send_message(system_channel_id, error_message)
