@@ -13,16 +13,24 @@ logger = logging.getLogger(__name__)
 
 
 def get_secrets() -> Dict[str, str]:
-    """Fetch secrets from AWS Secrets Manager for Lambda, or .env for local execution."""
+    """Fetch secrets from AWS Systems Manager Parameter Store if running in Lambda, or from .env for local execution."""
     if os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
-        # Running in AWS Lambda - fetch from Secrets Manager
+        # Running in AWS Lambda - fetch from SSM Parameter Store
         try:
-            secrets_client = boto3.client("secretsmanager", region_name="us-west-2")
-            response = secrets_client.get_secret_value(SecretId="GenAI_Telegram_Secrets")
-            secrets = json.loads(response["SecretString"])
+            ssm = boto3.client("ssm", region_name="us-west-2")
+            param_names = [
+                "TELEGRAM_API_ID",
+                "TELEGRAM_API_HASH",
+                "TELEGRAM_SESSION",
+                "OPENAI_API_KEY",
+            ]
+            secrets = {}
+            for name in param_names:
+                response = ssm.get_parameter(Name=name, WithDecryption=True)
+                secrets[name] = response["Parameter"]["Value"]
             return secrets  # Fetch only when needed (not stored as environment variables)
         except Exception as e:
-            logger.critical(f"Failed to retrieve secrets from AWS Secrets Manager: {e}")
+            logger.critical(f"Failed to retrieve secrets from AWS SSM Parameter Store: {e}")
             raise
     else:
         # Running locally - load from .env
