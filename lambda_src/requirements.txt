@@ -6,3 +6,6 @@ pytz==2024.2               # Time Zone conversion
 aiohttp==3.11.11           # Async HTTP client. Handle image downloads
 boto3==1.35.99             # AWS lib
 python-dotenv==1.0.1       # For loading .env configurations
+pytest==8.3.4              # Unit testing framework
+pytest-asyncio==0.25.2     # Async support for pytest
+moto[boto3]==5.0.27        # Mocking AWS services for testing
