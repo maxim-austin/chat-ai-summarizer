@@ -1,0 +1,43 @@
+name: Test and Lint
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r lambda_src/requirements.txt
+          pip install pytest pytest-cov ruff
+
+      - name: Run linting (Ruff)
+        run: |
+          source venv/bin/activate
+          ruff check lambda_src tests
+
+      - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          source venv/bin/activate
+          pytest tests/ --maxfail=3 --disable-warnings --cov=lambda_src --cov-report=xml
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage.xml

@@ -28,7 +28,7 @@ def get_secrets() -> Dict[str, str]:
             for name in param_names:
                 response = ssm.get_parameter(Name=name, WithDecryption=True)
                 secrets[name] = response["Parameter"]["Value"]
-            return secrets  # Fetch only when needed (not stored as environment variables)
+            return secrets
         except Exception as e:
             logger.critical(f"Failed to retrieve secrets from AWS SSM Parameter Store: {e}")
             raise
@@ -47,7 +47,7 @@ def get_secrets() -> Dict[str, str]:
         # Ensure all secrets are present
         missing_keys = [key for key, value in secrets.items() if value is None]
         if missing_keys:
-            raise Exception(f"Missing keys in .env file: {', '.join(missing_keys)}")
+            raise KeyError(f"Missing required environment variables: {', '.join(missing_keys)}")
 
         return secrets
 
