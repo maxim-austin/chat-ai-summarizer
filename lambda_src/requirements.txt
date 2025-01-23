@@ -3,6 +3,6 @@ langchain==0.3.14          # LLM lib
 langchain-openai==0.3.0    # For using LangChain's OpenAI integration
 openai==1.59.6             # For accessing OpenAI API
 pytz==2024.2               # Time Zone conversion
-requests==2.32.3           # Handle image downloads
+aiohttp==3.11.11           # Async HTTP client. Handle image downloads
 boto3==1.35.99             # AWS lib
 python-dotenv==1.0.1       # For loading .env configurations

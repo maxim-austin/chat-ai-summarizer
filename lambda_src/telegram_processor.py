@@ -1,5 +1,5 @@
 import logging
-import requests
+import aiohttp
 from datetime import datetime, timedelta, timezone
 from summarizer import summarize_messages, generate_image
 from telethon import TelegramClient
@@ -69,21 +69,16 @@ async def process_channel(client: TelegramClient, channel_config: Dict, secrets:
 
         if generate_image_flag:
             logger.info(f"Generating image for channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
-            image_url = generate_image(summary_text, llm_image_model_name, secrets["OPENAI_API_KEY"])
-            image_data = requests.get(image_url)
+            image_url = await generate_image(summary_text, llm_image_model_name, secrets["OPENAI_API_KEY"])
 
-            if image_data.status_code == 200:
-                image_path = "/tmp/summary_image.png"
-                with open(image_path, "wb") as f:
-                    f.write(image_data.content)
-                await client.send_file(summary_channel_id, image_path, caption="Illustration for the summary above")
-                logger.info(f"Image sent to channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
-            else:
-                error_msg = f"Failed to download image: {image_data.status_code} - {image_data.text}"
-                logger.error(error_msg)
-                await client.send_message(system_channel_id, error_msg)
-
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as image_data:
+                    if image_data.status == 200:
+                        image_path = "/tmp/summary_image.png"
+                        with open(image_path, "wb") as f:
+                            f.write(await image_data.read())
+                        await client.send_file(summary_channel_id, image_path, caption="Illustration for the summary "
+                                                                                       "above")
+                        logger.info("Image sent successfully.")
     except Exception as e:
-        error_message = f"Error processing channel {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}: {e}"
-        logger.error(error_message)
-        await client.send_message(system_channel_id, error_message)
+        logger.error(f"Error processing channel: {e}")

@@ -31,8 +31,6 @@ async def async_main(event: dict, context) -> dict:
         for channel_config in config["channels"]:
             if channel_config.get("ENABLED", 1) == 0:
                 logger.info(f"Skipping disabled channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
-                await client.send_message(system_channel_id,
-                                          f"Skipping disabled channel: {channel_config.get('SOURCE_CHANNEL_NAME', 'Unknown')}")
             else:
                 tasks.append(
                     process_channel(

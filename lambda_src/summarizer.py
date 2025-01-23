@@ -1,5 +1,5 @@
 import logging
-import requests
+import aiohttp
 from pytz import timezone
 from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
@@ -75,7 +75,8 @@ def summarize_messages(
 
         # Add metadata to the summary
         message_count = len(messages)
-        time_period = f"**Time period:** {start_date_tz.strftime('%Y-%m-%d %H:%M:%S')} to {end_date_tz.strftime('%Y-%m-%d %H:%M:%S')}"
+        time_period = f"**Time period:** {start_date_tz.strftime('%Y-%m-%d %H:%M:%S')} to {end_date_tz.strftime(
+            '%Y-%m-%d %H:%M:%S')}"
         message_count_text = f"**Number of messages:** {message_count}"
         return f"{time_period}\n{message_count_text}\n\n{summary_text}"
 
@@ -85,28 +86,36 @@ def summarize_messages(
         return f"**[Error occurred during summarization: {e}]**"
 
 
-def generate_image(summary_text: str, image_model_name: str, openai_api_key: str) -> str:
-    """Generates an image using OpenAI's API based on summary text."""
+async def generate_image(summary_text: str, image_model_name: str, openai_api_key: str) -> str:
+    """Asynchronously generates an image using OpenAI's API based on summary text."""
     try:
         # Define the prompt
         image_prompt = (
             f"Extract and identify up to 3 key topics from the summary provided below, "
             f"then create a cozy painterly-style illustration with soft textures and warm, inviting tones. "
             f"The image should be divided into separate segments, each representing one of the identified topics. "
-            f"Focus solely on illustrating the discussed items (e.g., cars, food, or objects) rather than including people. "
+            f"Focus solely on illustrating the discussed items (e.g., cars, food, or objects) rather than including "
+            f"people."
             f"Do not include text, captions, or labels in the illustration. "
             f"Use subtle, natural lighting and rich, warm colors to evoke a sense of comfort and harmony, "
             f"with no overly modern or abstract elements.\n\n"
             f"<summary>{summary_text}</summary>"
         )
 
-        response = requests.post(
-            "https://api.openai.com/v1/images/generations",
-            headers={"Authorization": f"Bearer {openai_api_key}", "Content-Type": "application/json"},
-            json={"prompt": image_prompt, "n": 1, "size": "1024x1024", "model": image_model_name}
-        )
-        response.raise_for_status()
-        return response.json()["data"][0]["url"]
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                    "https://api.openai.com/v1/images/generations",
+                    headers={"Authorization": f"Bearer {openai_api_key}", "Content-Type": "application/json"},
+                    json={"prompt": image_prompt, "n": 1, "size": "1024x1024", "model": image_model_name}
+            ) as response:
+                if response.status != 200:
+                    error_msg = f"Error generating image: {response.status} - {await response.text()}"
+                    logger.error(error_msg)
+                    return "**[Error occurred while generating image]**"
+
+                data = await response.json()
+                return data["data"][0]["url"]
+
     except Exception as e:
         error_message = f"Error generating image: {e}"
         logger.error(error_message)
