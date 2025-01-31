@@ -12,14 +12,14 @@
       "SUMMARY_CHANNEL_ID": -1002419660010,
       "GENERATE_IMAGE": 0,
       "SUMMARY_PERIOD_HOURS": 24,
-      "ENABLED": 0
+      "ENABLED": 1
     },
     {
       "SOURCE_CHANNEL_NAME": "Собрание города Остин",
       "SOURCE_CHANNEL_ID": -1001300734764,
       "SUMMARY_CHANNEL_ID": -4703496393,
       "GENERATE_IMAGE": 0,
-      "SUMMARY_PERIOD_HOURS": 48,
+      "SUMMARY_PERIOD_HOURS": 24,
       "ENABLED": 1
     },
     {
@@ -28,7 +28,7 @@
       "SUMMARY_CHANNEL_ID": -4730866032,
       "GENERATE_IMAGE": 0,
       "SUMMARY_PERIOD_HOURS": 24,
-      "ENABLED": 0
+      "ENABLED": 1
     },
     {
       "SOURCE_CHANNEL_NAME": "SnowflakeDB chat",
@@ -36,7 +36,7 @@
       "SUMMARY_CHANNEL_ID": -4703496393,
       "GENERATE_IMAGE": 0,
       "SUMMARY_PERIOD_HOURS": 24,
-      "ENABLED": 0
+      "ENABLED": 1
     }
   ]
 }
