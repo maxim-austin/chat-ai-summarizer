@@ -50,8 +50,15 @@ def summarize_messages(
         # Define the prompt
         system_template = """Вы являетесь помощником, который резюмирует активность канала Telegram. 
         Сосредоточьтесь на том, какие темы обсуждались и кем."""
-        human_template = f"""Резюмируйте следующий разговор на русском языке.
-        Включите, какие темы обсуждались и кем (имена участников).
+        human_template = """Резюмируйте следующий разговор на русском языке.
+        Включите, какие темы обсуждались и кем (имена участников)."""
+
+        # Friday edition mode
+        if datetime.today().weekday() == 1:  # 4 corresponds to Friday
+            human_template += """Резюме должно быть сгенереровано в шуточном виде в виде прожарки участников чата.
+            Резюме должно начинаться с фразы - Happy Friday y'all! ;)"""
+
+        human_template += f"""
         Период: {start_date_tz.strftime('%Y-%m-%d %H:%M:%S')} - {end_date_tz.strftime('%Y-%m-%d %H:%M:%S')}
         Разговор:
         {conversation_str}"""
