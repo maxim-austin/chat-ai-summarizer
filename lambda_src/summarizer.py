@@ -54,7 +54,7 @@ def summarize_messages(
         Включите, какие темы обсуждались и кем (имена участников)."""
 
         # Friday edition mode
-        if datetime.today().weekday() == 4:  # 4 corresponds to Friday
+        if datetime.today().weekday() == 5:  # 5 corresponds to Saturday (UTC time), Friday (CET)
             human_template += """Резюме должно быть сгенереровано в шуточном виде в виде прожарки участников чата.
             Резюме должно начинаться с фразы - Happy Friday y'all! ;)"""
 
